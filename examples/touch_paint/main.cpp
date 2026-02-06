@@ -1,6 +1,7 @@
 #include <jstm/core.hpp>
 #include <jstm/drivers/ili9341.hpp>
 #include <jstm/drivers/xpt2046.hpp>
+#include <jstm/graphics/canvas.hpp>
 #include <jstm/hal/fmc_lcd.hpp>
 #include <jstm/hal/gpio.hpp>
 #include <jstm/hal/spi_bus.hpp>
@@ -37,6 +38,8 @@ int main() {
 
   display.set_rotation(rotation);
 
+  graphics::canvas<drivers::ili9341> canvas(display);
+
   hal::spi_bus touch_spi(SPI1, {.baudrate_prescaler = SPI_BAUDRATEPRESCALER_128,
                                 .cpol = SPI_POLARITY_LOW,
                                 .cpha = SPI_PHASE_1EDGE,
@@ -62,7 +65,7 @@ int main() {
   touch.set_screen_size(display.width(), display.height());
   touch.set_rotation(rotation);
 
-  display.fill(colors::black.raw);
+  canvas.clear();
 
   constexpr u16 palette[] = {
       colors::white.raw,  colors::red.raw,    colors::green.raw,
@@ -70,24 +73,16 @@ int main() {
       colors::yellow.raw, colors::orange.raw,
   };
   constexpr u16 palette_count = sizeof(palette) / sizeof(palette[0]);
-  u16 bar_w = display.width() / (palette_count + 1);
-  u16 bar_y = display.height() - 20;
+  u16 bar_w = canvas.width() / (palette_count + 1);
+  u16 bar_y = canvas.height() - 20;
 
   auto draw_toolbar = [&]() {
     for (u16 i = 0; i < palette_count; ++i) {
-      for (u16 dy = 0; dy < 20; ++dy) {
-        for (u16 dx = 0; dx < bar_w; ++dx) {
-          display.pixel(i * bar_w + dx, bar_y + dy, palette[i]);
-        }
-      }
+      canvas.fill_rect(i * bar_w, bar_y, bar_w, 20, palette[i]);
     }
     u16 clr_x = palette_count * bar_w;
-    u16 clr_w = display.width() - clr_x;
-    for (u16 dy = 0; dy < 20; ++dy) {
-      for (u16 dx = 0; dx < clr_w; ++dx) {
-        display.pixel(clr_x + dx, bar_y + dy, colors::dark_gray.raw);
-      }
-    }
+    u16 clr_w = canvas.width() - clr_x;
+    canvas.fill_rect(clr_x, bar_y, clr_w, 20, colors::dark_gray.raw);
   };
 
   draw_toolbar();
@@ -99,28 +94,19 @@ int main() {
     if (touch.touched()) {
       auto p = touch.read();
 
-      if (p.x >= 0 && p.x < display.width() && p.y >= 0 &&
-          p.y < display.height()) {
+      if (p.x >= 0 && p.x < canvas.width() && p.y >= 0 &&
+          p.y < canvas.height()) {
         if (p.y >= bar_y) {
           u16 idx = p.x / bar_w;
           if (idx < palette_count) {
             brush_color = palette[idx];
           } else {
-            display.fill(colors::black.raw);
+            canvas.clear();
             draw_toolbar();
           }
         } else {
           i16 half = brush_size / 2;
-          for (i16 dy = -half; dy <= half; ++dy) {
-            for (i16 dx = -half; dx <= half; ++dx) {
-              i16 px = p.x + dx;
-              i16 py = p.y + dy;
-              if (px >= 0 && px < display.width() && py >= 0 && py < bar_y) {
-                display.pixel(static_cast<u16>(px), static_cast<u16>(py),
-                              brush_color);
-              }
-            }
-          }
+          canvas.fill_circle(p.x, p.y, half, brush_color);
         }
       }
     }

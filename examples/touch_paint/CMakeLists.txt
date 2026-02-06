@@ -2,6 +2,7 @@ add_executable(example_touch_paint main.cpp)
 
 target_link_libraries(example_touch_paint PRIVATE
     jstm_hal
+    jstm_graphics
     jstm_ili9341
     jstm_xpt2046
 )
