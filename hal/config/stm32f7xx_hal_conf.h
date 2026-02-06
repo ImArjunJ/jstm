@@ -1,5 +1,3 @@
-/* stm32f7xx_hal_conf.h — HAL module selection for jstm */
-
 #ifndef STM32F7XX_HAL_CONF_H
 #define STM32F7XX_HAL_CONF_H
 
@@ -7,7 +5,6 @@
 extern "C" {
 #endif
 
-/* ---- oscillator values ---- */
 #if !defined(HSE_VALUE)
 #define HSE_VALUE ((uint32_t)8000000U) /* 8 MHz from ST-Link MCO */
 #endif
@@ -36,7 +33,6 @@ extern "C" {
 #define EXTERNAL_CLOCK_VALUE ((uint32_t)12288000U)
 #endif
 
-/* ---- module selection ---- */
 #define HAL_MODULE_ENABLED
 #define HAL_GPIO_MODULE_ENABLED
 #define HAL_DMA_MODULE_ENABLED
@@ -49,8 +45,8 @@ extern "C" {
 #define HAL_I2C_MODULE_ENABLED
 #define HAL_TIM_MODULE_ENABLED
 #define HAL_ETH_MODULE_ENABLED
+#define HAL_SRAM_MODULE_ENABLED
 
-/* ---- SysTick ---- */
 #define TICK_INT_PRIORITY ((uint32_t)0x0FU)
 #define USE_RTOS 0U
 #define PREFETCH_ENABLE 1U
@@ -58,7 +54,6 @@ extern "C" {
 #define INSTRUCTION_CACHE_ENABLE 1U
 #define DATA_CACHE_ENABLE 1U
 
-/* ---- ethernet PHY ---- */
 #define ETH_MAC_ADDR0 ((uint8_t)0x00)
 #define ETH_MAC_ADDR1 ((uint8_t)0x80)
 #define ETH_MAC_ADDR2 ((uint8_t)0xE1)
@@ -66,14 +61,11 @@ extern "C" {
 #define ETH_MAC_ADDR4 ((uint8_t)0x00)
 #define ETH_MAC_ADDR5 ((uint8_t)0x00)
 
-/* LAN8742A PHY address (active on nucleo-f746zg) */
 #define LAN8742A_PHY_ADDRESS 0x00U
 
-/* PHY register timeouts (ms) — required by hal_eth.c */
 #define PHY_READ_TO 0x0000FFFFU
 #define PHY_WRITE_TO 0x0000FFFFU
 
-/* PHY register addresses — LAN8742A compatible */
 #define PHY_BCR ((uint16_t)0x0000)
 #define PHY_BSR ((uint16_t)0x0001)
 #define PHY_RESET ((uint16_t)0x8000)
@@ -90,17 +82,14 @@ extern "C" {
 #define PHY_LINKED_STATUS ((uint16_t)0x0004)
 #define PHY_JABBER_DETECTION ((uint16_t)0x0002)
 
-/* LAN8742A special status register (31) */
 #define PHY_SR ((uint16_t)0x001F)
 #define PHY_SPEED_STATUS ((uint16_t)0x0004)
 #define PHY_DUPLEX_STATUS ((uint16_t)0x0010)
 
-/* MACCR bit not defined in older CMSIS device headers for F746 */
 #if !defined(ETH_MACCR_CSTF)
 #define ETH_MACCR_CSTF ((uint32_t)0x02000000)
 #endif
 
-/* ---- include the HAL module headers ---- */
 #ifdef HAL_RCC_MODULE_ENABLED
 #include "stm32f7xx_hal_rcc.h"
 #endif
@@ -146,7 +135,10 @@ extern "C" {
 #include "stm32f7xx_hal_eth.h"
 #endif
 
-/* ---- assert ---- */
+#ifdef HAL_SRAM_MODULE_ENABLED
+#include "stm32f7xx_hal_sram.h"
+#endif
+
 /* #define USE_FULL_ASSERT  1U */
 
 #ifdef USE_FULL_ASSERT

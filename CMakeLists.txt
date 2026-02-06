@@ -77,6 +77,7 @@ option(JSTM_ENABLE_EXAMPLES "Build example programs" OFF)
 
 add_subdirectory(core)
 add_subdirectory(hal)
+add_subdirectory(drivers)
 
 if(JSTM_ENABLE_EXAMPLES)
   add_subdirectory(examples)

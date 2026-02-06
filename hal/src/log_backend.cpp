@@ -8,18 +8,18 @@ static UART_HandleTypeDef log_uart_handle{};
 static bool log_uart_ready = false;
 
 void log_uart_init() {
-  __HAL_RCC_GPIOD_CLK_ENABLE();
-  __HAL_RCC_USART3_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_UART4_CLK_ENABLE();
 
   GPIO_InitTypeDef gpio{};
-  gpio.Pin = GPIO_PIN_8 | GPIO_PIN_9;
+  gpio.Pin = GPIO_PIN_0 | GPIO_PIN_1;
   gpio.Mode = GPIO_MODE_AF_PP;
   gpio.Pull = GPIO_PULLUP;
   gpio.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  gpio.Alternate = GPIO_AF7_USART3;
-  HAL_GPIO_Init(GPIOD, &gpio);
+  gpio.Alternate = GPIO_AF8_UART4;
+  HAL_GPIO_Init(GPIOA, &gpio);
 
-  log_uart_handle.Instance = USART3;
+  log_uart_handle.Instance = UART4;
   log_uart_handle.Init.BaudRate = 115200;
   log_uart_handle.Init.WordLength = UART_WORDLENGTH_8B;
   log_uart_handle.Init.StopBits = UART_STOPBITS_1;
