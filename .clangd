@@ -1,0 +1,7 @@
+CompileFlags:
+  Remove:
+    - -specs=*
+    - -mno-unaligned-access
+
+Diagnostics:
+  UnusedIncludes: None
