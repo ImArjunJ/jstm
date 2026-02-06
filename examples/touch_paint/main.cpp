@@ -12,6 +12,8 @@ int main() {
   hal::system_init();
   delay_ms(100);
 
+  const u8 rotation = 3;
+
   auto lcd_addr = hal::fmc_lcd_init();
 
   hal::output_pin rst(GPIOB, GPIO_PIN_11, true);
@@ -33,7 +35,7 @@ int main() {
     while (true) delay_ms(1000);
   }
 
-  display.set_rotation(1);
+  display.set_rotation(rotation);
 
   hal::spi_bus touch_spi(SPI1, {.baudrate_prescaler = SPI_BAUDRATEPRESCALER_128,
                                 .cpol = SPI_POLARITY_LOW,
@@ -58,7 +60,7 @@ int main() {
   }
 
   touch.set_screen_size(display.width(), display.height());
-  touch.set_rotation(1);
+  touch.set_rotation(rotation);
 
   display.fill(colors::black.raw);
 

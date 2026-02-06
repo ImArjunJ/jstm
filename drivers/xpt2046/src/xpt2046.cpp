@@ -68,7 +68,7 @@ void xpt2046::apply_rotation() {
     case 0:
       cal_.swap_xy = true;
       cal_.invert_x = true;
-      cal_.invert_y = false;
+      cal_.invert_y = true;
       cal_.sx_raw_min = bounds_.raw_y_min;
       cal_.sx_raw_max = bounds_.raw_y_max;
       cal_.sy_raw_min = bounds_.raw_x_min;
@@ -86,7 +86,7 @@ void xpt2046::apply_rotation() {
     case 2:
       cal_.swap_xy = true;
       cal_.invert_x = false;
-      cal_.invert_y = true;
+      cal_.invert_y = false;
       cal_.sx_raw_min = bounds_.raw_y_min;
       cal_.sx_raw_max = bounds_.raw_y_max;
       cal_.sy_raw_min = bounds_.raw_x_min;
@@ -94,7 +94,7 @@ void xpt2046::apply_rotation() {
       break;
     case 3:
       cal_.swap_xy = false;
-      cal_.invert_x = true;
+      cal_.invert_x = false;
       cal_.invert_y = true;
       cal_.sx_raw_min = bounds_.raw_x_min;
       cal_.sx_raw_max = bounds_.raw_x_max;
