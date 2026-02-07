@@ -24,10 +24,10 @@ void UsageFault_Handler(void) {
   }
 }
 
-void SVC_Handler(void) {}
-
 void DebugMon_Handler(void) {}
 
-void PendSV_Handler(void) {}
+__attribute__((weak)) void SVC_Handler(void) {}
 
-void SysTick_Handler(void) { HAL_IncTick(); }
+__attribute__((weak)) void PendSV_Handler(void) {}
+
+__attribute__((weak)) void SysTick_Handler(void) { HAL_IncTick(); }

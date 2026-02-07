@@ -37,7 +37,24 @@ if(NOT TARGET stm32_hal)
     GIT_SHALLOW    TRUE
   )
 
+  FetchContent_Declare(
+    freertos_kernel
+    GIT_REPOSITORY https://github.com/FreeRTOS/FreeRTOS-Kernel.git
+    GIT_TAG        V11.1.0
+    GIT_SHALLOW    TRUE
+  )
+
   FetchContent_MakeAvailable(cmsis_core cmsis_device_f7 stm32f7xx_hal_driver)
+
+  add_library(freertos_config INTERFACE)
+  target_include_directories(freertos_config SYSTEM INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/rtos/config
+  )
+
+  set(FREERTOS_PORT "GCC_ARM_CM7" CACHE STRING "")
+  set(FREERTOS_HEAP "4" CACHE STRING "")
+
+  FetchContent_MakeAvailable(freertos_kernel)
 
   add_library(cmsis_f7 INTERFACE)
   target_include_directories(cmsis_f7 INTERFACE
@@ -77,6 +94,7 @@ option(JSTM_ENABLE_EXAMPLES "Build example programs" OFF)
 
 add_subdirectory(core)
 add_subdirectory(hal)
+add_subdirectory(rtos)
 add_subdirectory(graphics)
 add_subdirectory(drivers)
 
