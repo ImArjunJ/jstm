@@ -89,10 +89,33 @@ int main() {
 
   u16 brush_color = colors::white.raw;
   constexpr i16 brush_size = 5;
+  constexpr i16 half = brush_size / 2;
+
+  point last_pt = drivers::xpt2046::INVALID_POINT;
+  bool stroking = false;
+
+  auto draw_stroke = [&](point a, point b) {
+    i16 dx = b.x - a.x;
+    i16 dy = b.y - a.y;
+    i16 ax = dx < 0 ? -dx : dx;
+    i16 ay = dy < 0 ? -dy : dy;
+    i16 steps = ax > ay ? ax : ay;
+    if (steps == 0) {
+      canvas.fill_circle(a.x, a.y, half, brush_color);
+      return;
+    }
+    for (i16 i = 0; i <= steps; ++i) {
+      i16 x = a.x + dx * i / steps;
+      i16 y = a.y + dy * i / steps;
+      canvas.fill_circle(x, y, half, brush_color);
+    }
+  };
 
   while (true) {
     if (touch.touched()) {
       auto p = touch.read();
+
+      if (p.x == drivers::xpt2046::INVALID_COORD) continue;
 
       if (p.x >= 0 && p.x < canvas.width() && p.y >= 0 &&
           p.y < canvas.height()) {
@@ -104,11 +127,19 @@ int main() {
             canvas.clear();
             draw_toolbar();
           }
+          stroking = false;
         } else {
-          i16 half = brush_size / 2;
-          canvas.fill_circle(p.x, p.y, half, brush_color);
+          if (stroking) {
+            draw_stroke(last_pt, p);
+          } else {
+            canvas.fill_circle(p.x, p.y, half, brush_color);
+            stroking = true;
+          }
+          last_pt = p;
         }
       }
+    } else {
+      stroking = false;
     }
 
     delay_ms(10);

@@ -37,7 +37,11 @@ struct touch_calibration {
 class xpt2046 {
  public:
   static constexpr u8 SAMPLES = 16;
-  static constexpr u16 PRESSURE_THRESHOLD = 100;
+  static constexpr u16 PRESSURE_THRESHOLD = 200;
+  static constexpr u8 DEBOUNCE_READS = 3;
+  static constexpr u16 RAW_MIN = 150;
+  static constexpr u16 RAW_MAX = 3900;
+  static constexpr u16 MAX_SPREAD = 300;
 
   xpt2046(hal::spi_bus& spi, hal::output_pin& cs, hal::input_pin* irq = nullptr)
       : spi_{spi}, cs_{cs}, irq_{irq} {}
@@ -70,8 +74,12 @@ class xpt2046 {
   const touch_calibration& calibration() const { return cal_; }
   const touch_bounds& bounds() const { return bounds_; }
 
+  static constexpr i16 INVALID_COORD = -1;
+  static constexpr point INVALID_POINT = {INVALID_COORD, INVALID_COORD};
+
  private:
   u16 read_channel(u8 cmd);
+  u16 read_channel_burst(u8 cmd);
   void apply_rotation();
 
   hal::spi_bus& spi_;

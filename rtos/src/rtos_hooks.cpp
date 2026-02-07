@@ -61,7 +61,7 @@ void vApplicationGetTimerTaskMemory(
   *pulTimerTaskStackSize = configTIMER_TASK_STACK_DEPTH;
 }
 
-void SysTick_Handler(void) {
+void SysTick_Callback(void) {
   if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED) {
     xPortSysTickHandler();
   }

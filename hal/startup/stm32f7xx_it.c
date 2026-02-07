@@ -30,4 +30,9 @@ __attribute__((weak)) void SVC_Handler(void) {}
 
 __attribute__((weak)) void PendSV_Handler(void) {}
 
-__attribute__((weak)) void SysTick_Handler(void) { HAL_IncTick(); }
+__attribute__((weak)) void SysTick_Callback(void) {}
+
+void SysTick_Handler(void) {
+  HAL_IncTick();
+  SysTick_Callback();
+}
