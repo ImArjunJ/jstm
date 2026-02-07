@@ -1,6 +1,6 @@
 # examples
 
-four examples that build when you pass `-DJSTM_ENABLE_EXAMPLES=ON`.
+seven examples that build when you pass `-DJSTM_ENABLE_EXAMPLES=ON`.
 each one is a standalone firmware image you can flash to the nucleo
 f746zg.
 
@@ -9,12 +9,15 @@ cmake -B build -DCMAKE_TOOLCHAIN_FILE=stm32f746zg.cmake -DJSTM_ENABLE_EXAMPLES=O
 cmake --build build
 ```
 
-| example        | what it shows                      |
-| -------------- | ---------------------------------- |
-| blink          | bare-metal gpio                    |
-| rtos_blink     | freertos tasks                     |
-| touch_paint    | fmc display + spi touch + graphics |
-| rtcan_loopback | can bus pub/sub with isr routing   |
+| example           | what it shows                          |
+| ----------------- | -------------------------------------- |
+| blink             | bare-metal gpio                        |
+| rtos_blink        | freertos tasks                         |
+| touch_paint       | fmc display + spi touch + graphics     |
+| rtcan_loopback    | can bus pub/sub in internal loopback   |
+| can_send_test     | can2 hardware tx through a transceiver |
+| can_recv_test     | can2 hardware rx with subscribe_all    |
+| can_parallel_test | 5 concurrent tx tasks over can2        |
 
 flash any of them with:
 
@@ -129,3 +132,53 @@ the example shows the required interrupt wiring pattern. the key points:
 - route the six hal callbacks to the service's `handle_*_isr()` methods
 
 see [rtcan docs](rtcan.md) for a full explanation of why this is needed.
+
+---
+
+## can_send_test
+
+sends a counter message on can id 0x100 every 500 ms over real hardware.
+uses can2 on pb6 (tx) / pb5 (rx) with an external transceiver
+(max3051esa+ or similar). requires a second can node on the bus to
+provide ack (e.g. a candapter).
+
+```cpp
+rtcan::config cfg{};
+cfg.instance = CAN2;
+cfg.rate     = rtcan::bitrate::k500;
+cfg.tx_port  = GPIOB;  cfg.tx_pin = GPIO_PIN_6;
+cfg.rx_port  = GPIOB;  cfg.rx_pin = GPIO_PIN_5;
+cfg.af       = GPIO_AF9_CAN2;
+```
+
+### wiring
+
+| signal | pin |
+| ------ | --- |
+| CAN TX | PB6 |
+| CAN RX | PB5 |
+
+connect pb6/pb5 to the transceiver's txd/rxd. canh/canl go to the bus.
+120 ohm termination is preferred at each end of the bus.
+
+---
+
+## can_recv_test
+
+listens for all incoming can frames using `subscribe_all()` and prints
+each one to uart. uses the same can2 hardware setup as can_send_test.
+
+```cpp
+static rtos::queue<const rtcan::msg*> rx_q{32};
+svc.subscribe_all(rx_q);
+svc.start();
+```
+
+---
+
+## can_parallel_test
+
+stress test: 5 concurrent freertos tasks each transmit 200 messages
+(1000 total) at staggered intervals. a monitor task prints progress
+and a final summary. uses can2 with `tx_queue_depth = 32` to handle
+the burst.

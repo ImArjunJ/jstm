@@ -59,15 +59,16 @@ the driver uses 18 time quanta per bit:
 - sample point: 77.8%
 
 prescaler is computed automatically from `HAL_RCC_GetPCLK1Freq()` and
-the selected bitrate. on the nucleo f746zg at 216 mhz (pclk1 = 54 mhz,
-can clock = 108 mhz after apb1 divider compensation), this gives:
+the selected bitrate. **note**: unlike timer peripherals, bxCAN on the
+stm32f7 is clocked directly from the apb1 bus clock (no ×2 multiplier).
+on the nucleo f746zg at 216 mhz (pclk1 = 54 mhz):
 
 | bitrate | prescaler |
 | ------- | --------- |
-| 125k    | 48        |
-| 250k    | 24        |
-| 500k    | 12        |
-| 1000k   | 6         |
+| 125k    | 24        |
+| 250k    | 12        |
+| 500k    | 6         |
+| 1000k   | 3         |
 
 ## basic usage
 
@@ -110,6 +111,27 @@ automatically when all subscribers call `msg_consumed()`.
 svc.unsubscribe(0x100, my_queue);
 ```
 
+### subscribe to all messages
+
+for monitoring or logging, you can subscribe to every incoming frame
+regardless of id:
+
+```cpp
+rtos::queue<const rtcan::msg*> all_msgs{32};
+svc.subscribe_all(all_msgs);
+
+// in your task:
+const rtcan::msg* m = nullptr;
+if (all_msgs.receive(m)) {
+  log::info("id=0x%03lX dlc=%u", m->id, m->dlc);
+  svc.msg_consumed(m);
+}
+```
+
+wildcard subscribers receive every frame in addition to any per-id
+subscribers. up to 4 wildcard subscriptions are supported. remove with
+`svc.unsubscribe_all(all_msgs)`.
+
 ### subscriber count
 
 ```cpp
@@ -150,6 +172,29 @@ on the next `start()`.
 the stm32 has 28 filter banks shared between can1 (banks 0-13) and
 can2 (banks 14-27). this driver uses one bank per filter.
 
+## using can2
+
+on the nucleo-144, can1 (pa11/pa12) is unusable without desoldering
+solder bridges sb121/sb123 since those pins are shared with usb otg fs.
+use can2 on pb5/pb6 instead:
+
+```cpp
+rtcan::config cfg{};
+cfg.instance = CAN2;
+cfg.rate     = rtcan::bitrate::k500;
+cfg.tx_port  = GPIOB;  cfg.tx_pin = GPIO_PIN_6;
+cfg.rx_port  = GPIOB;  cfg.rx_pin = GPIO_PIN_5;
+cfg.af       = GPIO_AF9_CAN2;
+```
+
+things to know about can2:
+
+- the driver automatically enables both can1 and can2 clocks (can2
+  shares the apb1 bus master through can1)
+- filter banks 14–27 are used for can2 (the driver handles this)
+- you must wire the can2 irq handlers in your isr boilerplate
+  (see below)
+
 ## isr hookup
 
 the stm32 hal uses global c callbacks for can interrupts. you need to
@@ -185,6 +230,17 @@ void HAL_CAN_ErrorCallback(CAN_HandleTypeDef*) {
 }
 }
 ```
+
+for can2, replace the four irq handler names:
+
+```cpp
+void CAN2_TX_IRQHandler()  { HAL_CAN_IRQHandler(g_rtcan->can_handle()); }
+void CAN2_RX0_IRQHandler() { HAL_CAN_IRQHandler(g_rtcan->can_handle()); }
+void CAN2_RX1_IRQHandler() { HAL_CAN_IRQHandler(g_rtcan->can_handle()); }
+void CAN2_SCE_IRQHandler() { HAL_CAN_IRQHandler(g_rtcan->can_handle()); }
+```
+
+the six `HAL_CAN_*Callback` functions are the same for both peripherals.
 
 then in `main()`:
 
