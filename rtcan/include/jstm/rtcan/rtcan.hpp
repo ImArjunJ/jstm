@@ -84,6 +84,10 @@ class service {
 
   result<void> unsubscribe(u32 can_id, rtos::queue<const msg*>& q);
 
+  result<void> subscribe_all(rtos::queue<const msg*>& q);
+
+  result<void> unsubscribe_all(rtos::queue<const msg*>& q);
+
   u16 subscriber_count(u32 can_id) const;
 
   void msg_consumed(const msg* m);
@@ -167,6 +171,10 @@ class service {
   static constexpr u8 MAX_USER_FILTERS = 14;
   filter user_filters_[MAX_USER_FILTERS]{};
   u8 num_user_filters_ = 0;
+
+  static constexpr u8 MAX_WILDCARD_SUBS = 4;
+  rtos::queue<const msg*>* wildcard_subs_[MAX_WILDCARD_SUBS]{};
+  u8 num_wildcard_subs_ = 0;
 
   rtcan_error err_ = rtcan_error::none;
   std::atomic<bool> running_{false};

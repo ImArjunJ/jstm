@@ -11,9 +11,7 @@ static constexpr u32 CAN_SJW = CAN_SJW_1TQ;
 
 static u32 compute_prescaler(bitrate rate) {
   const u32 pclk1 = HAL_RCC_GetPCLK1Freq();
-  const u32 apb1_div = (RCC->CFGR & RCC_CFGR_PPRE1) >> RCC_CFGR_PPRE1_Pos;
-  const u32 can_clk = (apb1_div >= 4) ? (pclk1 * 2) : pclk1;
-  return can_clk / (static_cast<u32>(rate) * CAN_TQ);
+  return pclk1 / (static_cast<u32>(rate) * CAN_TQ);
 }
 
 service::service(const config& cfg) : cfg_{cfg} {
@@ -73,6 +71,9 @@ void service::init_peripheral() {
 
   hcan_.Instance = cfg_.instance;
   hcan_.Init.Prescaler = compute_prescaler(cfg_.rate);
+  log::info("rtcan: pclk1=%luHz prescaler=%lu bitrate=%lu",
+            HAL_RCC_GetPCLK1Freq(), hcan_.Init.Prescaler,
+            HAL_RCC_GetPCLK1Freq() / (hcan_.Init.Prescaler * CAN_TQ));
   hcan_.Init.Mode = CAN_MODE_NORMAL;
 
   if (cfg_.loopback && cfg_.silent)
@@ -425,6 +426,33 @@ result<void> service::unsubscribe(u32 can_id, rtos::queue<const msg*>& q) {
   return fail(error_code::not_found, "rtcan: queue not subscribed to this ID");
 }
 
+result<void> service::subscribe_all(rtos::queue<const msg*>& q) {
+  if (num_wildcard_subs_ >= MAX_WILDCARD_SUBS) {
+    return fail(error_code::out_of_memory,
+                "rtcan: wildcard subscriber list full");
+  }
+  for (u8 i = 0; i < num_wildcard_subs_; ++i) {
+    if (wildcard_subs_[i] == &q) {
+      return fail(error_code::invalid_argument,
+                  "rtcan: queue already subscribed as wildcard");
+    }
+  }
+  wildcard_subs_[num_wildcard_subs_++] = &q;
+  return ok();
+}
+
+result<void> service::unsubscribe_all(rtos::queue<const msg*>& q) {
+  for (u8 i = 0; i < num_wildcard_subs_; ++i) {
+    if (wildcard_subs_[i] == &q) {
+      wildcard_subs_[i] = wildcard_subs_[num_wildcard_subs_ - 1];
+      wildcard_subs_[num_wildcard_subs_ - 1] = nullptr;
+      --num_wildcard_subs_;
+      return ok();
+    }
+  }
+  return fail(error_code::not_found, "rtcan: queue not subscribed as wildcard");
+}
+
 void service::msg_consumed(const msg* m) {
   auto* im = reinterpret_cast<internal_msg*>(reinterpret_cast<uintptr_t>(m) -
                                              offsetof(internal_msg, payload));
@@ -524,52 +552,64 @@ void service::rx_thread_entry(void* arg) {
 
     internal_msg& im = self->rx_pool_[slot_index];
 
-    const u32 index = self->hash(im.payload.id) % self->cfg_.hashmap_size;
-    hashmap_slot* slot = &self->map_[index];
-
-    if (!slot->occupied) {
-      self->rx_free_list_->send(slot_index, 0);
-      continue;
-    }
-
     hashmap_slot* found = nullptr;
-    hashmap_slot* cur = slot;
-    while (cur) {
-      if (cur->can_id == im.payload.id) {
-        found = cur;
-        break;
+    {
+      const u32 index = self->hash(im.payload.id) % self->cfg_.hashmap_size;
+      hashmap_slot* slot = &self->map_[index];
+
+      if (slot->occupied) {
+        hashmap_slot* cur = slot;
+        while (cur) {
+          if (cur->can_id == im.payload.id) {
+            found = cur;
+            break;
+          }
+          if (cur->chain_next == INVALID_INDEX) break;
+          cur = &self->map_[cur->chain_next];
+        }
       }
-      if (cur->chain_next == INVALID_INDEX) break;
-      cur = &self->map_[cur->chain_next];
     }
 
-    if (!found || found->first_subscriber == INVALID_INDEX) {
+    u16 id_count = 0;
+    if (found && found->first_subscriber != INVALID_INDEX) {
+      u16 si = found->first_subscriber;
+      while (si != INVALID_INDEX) {
+        ++id_count;
+        si = self->subscribers_[si].next;
+      }
+    }
+
+    u16 wc_count = self->num_wildcard_subs_;
+    u16 total = id_count + wc_count;
+
+    if (total == 0) {
       self->rx_free_list_->send(slot_index, 0);
       continue;
     }
 
-    u16 count = 0;
-    u16 si = found->first_subscriber;
-    while (si != INVALID_INDEX) {
-      ++count;
-      si = self->subscribers_[si].next;
+    im.refcount.store(total, std::memory_order_relaxed);
+    const msg* payload_ptr = &im.payload;
+
+    if (found) {
+      u16 si = found->first_subscriber;
+      while (si != INVALID_INDEX) {
+        if (!self->subscribers_[si].q->send(payload_ptr, 0)) {
+          u16 prev = im.refcount.fetch_sub(1, std::memory_order_acq_rel);
+          if (prev == 1) {
+            self->rx_free_list_->send(slot_index, 0);
+          }
+        }
+        si = self->subscribers_[si].next;
+      }
     }
 
-    im.refcount.store(count, std::memory_order_relaxed);
-
-    const msg* payload_ptr = &im.payload;
-    si = found->first_subscriber;
-    while (si != INVALID_INDEX) {
-      if (!self->subscribers_[si].q->send(payload_ptr, 0)) {
+    for (u8 i = 0; i < wc_count; ++i) {
+      if (!self->wildcard_subs_[i]->send(payload_ptr, 0)) {
         u16 prev = im.refcount.fetch_sub(1, std::memory_order_acq_rel);
         if (prev == 1) {
           self->rx_free_list_->send(slot_index, 0);
         }
       }
-      si = self->subscribers_[si].next;
-    }
-
-    if (im.refcount.load(std::memory_order_acquire) == 0 && count > 0) {
     }
   }
 }
