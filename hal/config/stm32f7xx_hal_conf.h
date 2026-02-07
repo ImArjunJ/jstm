@@ -46,6 +46,7 @@ extern "C" {
 #define HAL_TIM_MODULE_ENABLED
 #define HAL_ETH_MODULE_ENABLED
 #define HAL_SRAM_MODULE_ENABLED
+#define HAL_CAN_MODULE_ENABLED
 
 #define TICK_INT_PRIORITY ((uint32_t)0x0FU)
 #define USE_RTOS 0U
@@ -137,6 +138,10 @@ extern "C" {
 
 #ifdef HAL_SRAM_MODULE_ENABLED
 #include "stm32f7xx_hal_sram.h"
+#endif
+
+#ifdef HAL_CAN_MODULE_ENABLED
+#include "stm32f7xx_hal_can.h"
 #endif
 
 /* #define USE_FULL_ASSERT  1U */

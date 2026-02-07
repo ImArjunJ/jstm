@@ -193,6 +193,12 @@ class counting_semaphore {
 
   void give() { xSemaphoreGive(handle_); }
 
+  void give_from_isr() {
+    BaseType_t woken = pdFALSE;
+    xSemaphoreGiveFromISR(handle_, &woken);
+    portYIELD_FROM_ISR(woken);
+  }
+
   u32 count() const { return uxSemaphoreGetCount(handle_); }
 
   bool valid() const { return handle_ != nullptr; }
@@ -243,6 +249,13 @@ class queue {
 
   bool receive(T& item, u32 timeout_ticks = portMAX_DELAY) {
     return xQueueReceive(handle_, &item, timeout_ticks) == pdTRUE;
+  }
+
+  bool receive_from_isr(T& item) {
+    BaseType_t woken = pdFALSE;
+    auto ok = xQueueReceiveFromISR(handle_, &item, &woken);
+    portYIELD_FROM_ISR(woken);
+    return ok == pdTRUE;
   }
 
   bool peek(T& item, u32 timeout_ticks = 0) const {

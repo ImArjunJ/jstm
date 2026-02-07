@@ -95,6 +95,7 @@ option(JSTM_ENABLE_EXAMPLES "Build example programs" OFF)
 add_subdirectory(core)
 add_subdirectory(hal)
 add_subdirectory(rtos)
+add_subdirectory(rtcan)
 add_subdirectory(graphics)
 add_subdirectory(drivers)
 

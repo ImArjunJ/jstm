@@ -6,7 +6,7 @@
 
 namespace jstm::hal {
 extern void log_uart_transmit(const char* data, u32 len) __attribute__((weak));
-}  // namespace jstm::hal
+}
 
 namespace jstm::log {
 

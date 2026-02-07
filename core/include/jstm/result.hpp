@@ -11,6 +11,7 @@ enum class error_code : u8 {
   hardware_fault,
   invalid_argument,
   not_initialized,
+  not_found,
   connection_failed,
   out_of_memory,
   io_error,

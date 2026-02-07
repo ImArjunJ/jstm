@@ -84,4 +84,4 @@ extern uint32_t SystemCoreClock;
 #define xPortPendSVHandler PendSV_Handler
 #define vPortSVCHandler SVC_Handler
 
-#endif /* FREERTOS_CONFIG_H */
+#endif

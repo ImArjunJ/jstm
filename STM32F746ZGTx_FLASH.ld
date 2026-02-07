@@ -1,4 +1,4 @@
-/* linker script for stm32f746zgt6 — 1 MB flash, 320 KB sram */
+/* linker script for stm32f746zgt6 - 1 MB flash, 320 KB sram */
 
 ENTRY(Reset_Handler)
 
