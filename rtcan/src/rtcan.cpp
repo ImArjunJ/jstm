@@ -128,6 +128,7 @@ void service::configure_filters() {
   filter.FilterMaskIdLow = 0x0000;
   filter.FilterMode = CAN_FILTERMODE_IDMASK;
   filter.FilterScale = CAN_FILTERSCALE_32BIT;
+  filter.SlaveStartFilterBank = 14;
 
   if (HAL_CAN_ConfigFilter(&hcan_, &filter) != HAL_OK) {
     err_ |= rtcan_error::init;
@@ -162,6 +163,7 @@ void service::apply_user_filters() {
         (f.fifo == 1) ? CAN_FILTER_FIFO1 : CAN_FILTER_FIFO0;
     cf.FilterMode = CAN_FILTERMODE_IDMASK;
     cf.FilterScale = CAN_FILTERSCALE_32BIT;
+    cf.SlaveStartFilterBank = 14;
 
     if (f.extended) {
       cf.FilterIdHigh = static_cast<u16>((f.id << 3) >> 16);
@@ -455,6 +457,9 @@ void service::handle_rx_isr(u32 fifo) {
     return;
   }
 
+  const u8 dlc = static_cast<u8>(hdr.DLC);
+  for (u8 i = dlc; i < 8; ++i) im.payload.data[i] = 0;
+
   if (hdr.IDE == CAN_ID_EXT) {
     im.payload.id = hdr.ExtId;
     im.payload.extended = true;
@@ -462,7 +467,7 @@ void service::handle_rx_isr(u32 fifo) {
     im.payload.id = hdr.StdId;
     im.payload.extended = false;
   }
-  im.payload.dlc = static_cast<u8>(hdr.DLC);
+  im.payload.dlc = dlc;
   im.payload.rtr = (hdr.RTR == CAN_RTR_REMOTE);
   im.refcount.store(0, std::memory_order_relaxed);
 

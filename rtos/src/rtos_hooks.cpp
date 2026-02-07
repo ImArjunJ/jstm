@@ -1,5 +1,27 @@
 #include "FreeRTOS.h"
+#include "semphr.h"
 #include "task.h"
+
+static SemaphoreHandle_t s_log_mutex = nullptr;
+
+namespace jstm::hal {
+
+void log_lock() {
+  if (!s_log_mutex) {
+    s_log_mutex = xSemaphoreCreateMutex();
+  }
+  if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED) {
+    xSemaphoreTake(s_log_mutex, portMAX_DELAY);
+  }
+}
+
+void log_unlock() {
+  if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED && s_log_mutex) {
+    xSemaphoreGive(s_log_mutex);
+  }
+}
+
+}  // namespace jstm::hal
 
 extern "C" {
 

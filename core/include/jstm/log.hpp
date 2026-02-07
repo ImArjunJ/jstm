@@ -6,7 +6,9 @@
 
 namespace jstm::hal {
 extern void log_uart_transmit(const char* data, u32 len) __attribute__((weak));
-}
+extern void log_lock() __attribute__((weak));
+extern void log_unlock() __attribute__((weak));
+}  // namespace jstm::hal
 
 namespace jstm::log {
 
@@ -50,16 +52,21 @@ inline void emit(const char* fmt, Args... args) {
     char buf[256];
     int off = snprintf(buf, sizeof(buf), "%s ", level_tag(L));
     off += snprintf(buf + off, sizeof(buf) - off, fmt, args...);
-    if (off < static_cast<int>(sizeof(buf)) - 1) {
+    if (off < static_cast<int>(sizeof(buf)) - 2) {
+      buf[off++] = '\r';
       buf[off++] = '\n';
     }
     buf[off] = '\0';
+
+    if (jstm::hal::log_lock) jstm::hal::log_lock();
 
     if (jstm::hal::log_uart_transmit) {
       jstm::hal::log_uart_transmit(buf, static_cast<u32>(off));
     } else {
       std::printf("%s", buf);
     }
+
+    if (jstm::hal::log_unlock) jstm::hal::log_unlock();
   }
 }
 
