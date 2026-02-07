@@ -2,6 +2,8 @@ add_executable(example_can_recv_test main.cpp)
 
 target_link_libraries(example_can_recv_test PRIVATE
     jstm_hal
+    jstm_rtos
+    jstm_rtcan
 )
 
 set_target_properties(example_can_recv_test PROPERTIES
